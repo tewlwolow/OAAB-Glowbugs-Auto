@@ -8,6 +8,6 @@ return {
 	redBugsRegions = {
 		["Ashlands Region"] = true
 	},
-	bugDensity = 7,
+	bugDensity = 5,
 	spawnChance = 30
 }
