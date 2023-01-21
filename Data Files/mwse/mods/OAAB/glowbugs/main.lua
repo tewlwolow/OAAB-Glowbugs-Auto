@@ -76,23 +76,11 @@ local function getTrimmedPositions(positions)
 end
 
 local function isIdAllowed(id)
-    local allowed = false
-    for _, pattern in ipairs(allowedStrings) do
-        if string.find(id, pattern) then
-            allowed = true
-        end
-    end
-    return allowed
+    return string.multifind(id, allowedStrings)
 end
 
 local function isIdDenied(id)
-    local denied = false
-    for _, pattern in ipairs(deniedStrings) do
-        if string.find(id, pattern) then
-            denied = true
-        end
-    end
-    return denied
+    return string.multifind(id, deniedStrings)
 end
 
 local function iterObjects(positions, objectType, cell)
