@@ -12,7 +12,7 @@ local config = require("OAAB.glowbugs.config")
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Variables
 
-local activeBugs, inActiveBugs, bugCells, bugsVisible = {}, {}, {}, {}
+local activeBugs, bugCells, bugsVisible = {}, {}, {}
 
 local glowbugs, WtC
 
@@ -38,7 +38,6 @@ local function refCreated(e)
     local ref = e.reference
     local refCell = ref.cell
     if ref.sceneNode:hasStringDataWith("HasBugsRoot") then
-        debug.log("Adding: " .. ref.id)
         activeBugs[ref] = true
         if refCell then
             bugCells[refCell] = true
@@ -48,14 +47,23 @@ end
 
 
 --- Detect when bug references are deleted, and stop tracking them.
----@param e referenceDeactivatedEventData
+---@param e objectInvalidatedEventData
 ---@return nil
 local function refDeleted(e)
-    local ref = e.reference
+    local ref = e.object
     if activeBugs[ref] then
         activeBugs[ref] = nil
-        inActiveBugs[ref] = true
     end
+end
+
+
+local function safeDelete(ref)
+    timer.delayOneFrame(
+        function()
+            activeBugs[ref] = nil
+            ref:delete()
+        end
+    )
 end
 
 
@@ -64,7 +72,11 @@ end
 ---@return nil
 local function toggleBugsVisibility(state)
     local index = state and 1 or 0
-    for ref, _ in pairs(activeBugs) do
+    local toRemove = {}
+    for ref in pairs(activeBugs) do
+        if not ref.sourceMod and not state then
+            toRemove[ref] = true
+        end
         local sourceMod = ref.sourceMod or "nil"
         local refID = ref.id or "nil"
         debug.log(refID .. " | " .. sourceMod)
@@ -74,6 +86,9 @@ local function toggleBugsVisibility(state)
                 root.switchIndex = index
             end
         end
+    end
+    for ref in pairs(toRemove) do
+        safeDelete(ref)
     end
 end
 
@@ -204,26 +219,9 @@ local function getAvailableBugs(regionID)
     return availableBugs
 end
 
-
---- Iterate over inActiveBugs table and remove all glowbugs.
----@return nil
-local function cleanUpInactiveBugs()
-    for ref, _ in pairs(inActiveBugs) do
-        -- we don't want to remove references from mod files
-        if not ref.sourceMod then
-            ref:delete()
-            debug.log("Sourceless glowbug removed.")
-        else
-            debug.log("Inactive glowbug from mod file. Skipping.")
-        end
-    end
-    inActiveBugs = {}
-end
-
 --- Condition check for active bugs. Runs once per hour.
 ---@return nil
 local function conditionCheck()
-    cleanUpInactiveBugs()
     local cell = tes3.player.cell
 
     local isBugsVisible = true
@@ -259,6 +257,17 @@ local function conditionCheck()
 
     if isBugsVisible and not (bugCells[cell]) then
         spawnBugs(availableBugs, cell)
+    end
+end
+
+
+--- Detect when custom bug references are decativated, set them to delete stop tracking them.
+---@param e referenceDeactivatedEventData
+---@return nil
+local function refDeactivated(e)
+    local ref = e.reference
+    if (activeBugs[ref]) and not (ref.sourceMod) then
+        safeDelete(ref)
     end
 end
 
@@ -317,6 +326,7 @@ local function startBugsTimer()
     }
 end
 
+
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Events
 
@@ -324,7 +334,8 @@ end
 event.register("initialized", function()
     if tes3.isModActive("OAAB_Data.esm") then
         event.register("referenceSceneNodeCreated", refCreated)
-        event.register("referenceDeactivated", refDeleted)
+        event.register("objectInvalidated", refDeleted)
+        event.register("referenceDeactivated", refDeactivated)
         event.register("cellChanged", function() timer.delayOneFrame(conditionCheck) end)
         event.register("weatherTransitionFinished", conditionCheck)
         event.register("activate", harvestBugs, {priority = 600})
