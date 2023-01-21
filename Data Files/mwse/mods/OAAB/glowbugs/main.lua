@@ -36,8 +36,13 @@ local DENIED_REGEX = re.compile[[ "kelp" / "lilypad" ]]
 ---@return nil
 local function refCreated(e)
     local ref = e.reference
+    local refCell = ref.cell
     if ref.sceneNode:hasStringDataWith("HasBugsRoot") then
+        debug.log("Adding: " .. ref.id)
         activeBugs[ref] = true
+        if refCell then
+            bugCells[refCell] = true
+        end
     end
 end
 
@@ -59,8 +64,11 @@ end
 ---@return nil
 local function toggleBugsVisibility(state)
     local index = state and 1 or 0
-    for ref in pairs(activeBugs) do
-        if ref.sceneNode then
+    for ref, _ in pairs(activeBugs) do
+        local sourceMod = ref.sourceMod or "nil"
+        local refID = ref.id or "nil"
+        debug.log(refID .. " | " .. sourceMod)
+        if ref and ref.sceneNode then
             local root = ref.sceneNode:getObjectByName("BugsRoot")
             if root and root.switchIndex ~= index then
                 root.switchIndex = index
@@ -201,24 +209,27 @@ end
 ---@return nil
 local function cleanUpInactiveBugs()
     for ref, _ in pairs(inActiveBugs) do
-        ref:delete()
+        -- we don't want to remove references from mod files
+        if not ref.sourceMod then
+            ref:delete()
+            debug.log("Sourceless glowbug removed.")
+        else
+            debug.log("Inactive glowbug from mod file. Skipping.")
+        end
     end
     inActiveBugs = {}
 end
 
-
 --- Condition check for active bugs. Runs once per hour.
 ---@return nil
 local function conditionCheck()
+    cleanUpInactiveBugs()
     local cell = tes3.player.cell
 
     local isBugsVisible = true
     local availableBugs = {}
 
-    if not (cell.isOrBehavesAsExterior) then
-        -- global variable used for dialogue filtering
-        tes3.setGlobal("AB_GlowbugsVisible", 0)
-    else
+    if (cell.isOrBehavesAsExterior) then
         -- exterior cells require valid hours/weathers
         local wc = tes3.worldController
 
@@ -242,20 +253,12 @@ local function conditionCheck()
         availableBugs = getAvailableBugs(regionID)
 
         isBugsVisible = isActiveHours and isValidWeather and isValidDay and isWilderness and not (table.empty(availableBugs))
-
-        -- global variable used for dialogue filtering
-        tes3.setGlobal("AB_GlowbugsVisible", isBugsVisible and 1 or 0)
     end
 
-    if not isBugsVisible then
-        toggleBugsVisibility(isBugsVisible)
-        cleanUpInactiveBugs()
-        bugCells[cell] = nil
-    else
-        if not (bugCells[cell]) then
-            bugCells[cell] = true
-            spawnBugs(availableBugs, cell)
-        end
+    toggleBugsVisibility(isBugsVisible)
+
+    if isBugsVisible and not (bugCells[cell]) then
+        spawnBugs(availableBugs, cell)
     end
 end
 
@@ -322,7 +325,7 @@ event.register("initialized", function()
     if tes3.isModActive("OAAB_Data.esm") then
         event.register("referenceSceneNodeCreated", refCreated)
         event.register("referenceDeactivated", refDeleted)
-        event.register("cellChanged", conditionCheck)
+        event.register("cellChanged", function() timer.delayOneFrame(conditionCheck) end)
         event.register("weatherTransitionFinished", conditionCheck)
         event.register("activate", harvestBugs, {priority = 600})
         event.register("loaded", startBugsTimer)
