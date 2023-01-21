@@ -23,14 +23,11 @@ local function refCreated(e)
     end
 end
 
-
 --- Detect when bug references are deleted, and stop tracking them.
 ---
 local function refDeleted(e)
     activeBugs[e.object] = nil
-    e:delete()
 end
-
 
 --- Toggle visibility for all currently active bugs references.
 ---
@@ -147,7 +144,8 @@ local function spawnBugs(availableBugs, cell)
     toggleBugsVisibility(true)
 end
 
--- See if we are in a valid region
+--- See if we are in a valid region
+---
 local function getAvailableBugs(regionID)
     local availableBugs = {}
     for _, glowbugType in pairs(bugs) do
@@ -158,12 +156,24 @@ local function getAvailableBugs(regionID)
     return availableBugs
 end
 
+local function cleanUpInactiveBugs(cell)
+    for ref in cell:iterateReferences(tes3.objectType.container) do
+        if ref.sceneNode then
+            local root = ref.sceneNode:getObjectByName("BugsRoot")
+            if root.switchIndex == false then
+                ref:delete()
+            end
+        end
+    end
+end
+
 --- Global manager for active bugs. Runs once per hour.
 ---
 local bugsVisible = {}
 local function conditionCheck()
-    local isBugsVisible = true
     local cell = tes3.player.cell
+
+    local isBugsVisible = true
     local availableBugs = {}
 
     if not (cell.isOrBehavesAsExterior) then
@@ -203,6 +213,7 @@ local function conditionCheck()
     if not isBugsVisible then
         bugCells[cell] = nil
         toggleBugsVisibility(isBugsVisible)
+        cleanUpInactiveBugs(cell)
     else
         if not (bugCells[cell]) then
             bugCells[cell] = true
