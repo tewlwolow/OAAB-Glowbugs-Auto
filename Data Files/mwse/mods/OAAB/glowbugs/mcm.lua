@@ -1,4 +1,4 @@
-local configPath = "OAAB:Glowbugs"
+local configPath = "OAAB Glowbugs"
 local config = require("OAAB.glowbugs.config")
 local defaults = require("OAAB.glowbugs.defaults")
 
@@ -10,7 +10,7 @@ local function registerVariable(id)
 end
 
 local template = mwse.mcm.createTemplate{
-    name="OAAB:Glowbugs",
+    name="OAAB Glowbugs",
     headerImagePath="\\Textures\\OAAB\\mcm\\glowbugs\\glowbugs_logo.dds"
 }
 
@@ -18,7 +18,7 @@ local template = mwse.mcm.createTemplate{
 local mainPage = template:createPage{label="Main Settings"}
 
 mainPage:createCategory{
-	label = "OAAB:Glowbugs by OAAB team.\nThis MWSE script controls spawn settings.\n\nSettings:",
+	label = "OAAB Glowbugs by OAAB team.\nThis MWSE script controls spawn settings.\n\nSettings:",
 }
 
 mainPage:createSlider {

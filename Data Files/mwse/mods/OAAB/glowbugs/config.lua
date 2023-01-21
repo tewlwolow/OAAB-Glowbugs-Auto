@@ -1,1 +1,1 @@
-return mwse.loadConfig("OAAB:Glowbugs", require("OAAB.glowbugs.defaults"))
+return mwse.loadConfig("OAAB Glowbugs", require("OAAB.glowbugs.defaults"))

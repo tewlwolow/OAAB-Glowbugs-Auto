@@ -72,7 +72,7 @@ local function getTrimmedPositions(positions)
     local getRandomPos = util.nonRepeatTableRNG(positions)
     for i = 1, math.min(config.bugDensity, #positions) do
         local val = getRandomPos()
-        table.insert(trimmedPositions, #trimmedPositions+1, val)
+        table.insert(trimmedPositions, val)
     end
     return trimmedPositions
 end
@@ -102,7 +102,7 @@ local function iterObjects(positions, objectType, cell)
         local id = ref.object.id:lower()
         local pos = ref.position:copy()
         if isIdAllowed(id) and not isIdDenied(id) and not table.find(positions, pos) then
-            table.insert(positions, #positions+1, pos)
+            table.insert(positions, pos)
         end
 	end
 end
@@ -151,7 +151,7 @@ local function getAvailableBugs(regionID)
     local availableBugs = {}
     for _, glowbugType in pairs(bugs) do
         if glowbugType.regions[regionID] then
-            table.insert(availableBugs, #availableBugs+1, glowbugType.object)
+            table.insert(availableBugs, glowbugType.object)
         end
     end
     return availableBugs
