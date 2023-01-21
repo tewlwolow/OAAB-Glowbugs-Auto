@@ -120,6 +120,33 @@ template:createExclusionsPage{
 	}
 }
 
+---
+template:createExclusionsPage{
+	label = "Violet Glowbugs Regions",
+	description = "Select which regions the violet glowbugs will spawn in. Move regions to the left table to enable.",
+	toggleText = "Toggle",
+	leftListLabel = "Enabled regions",
+	rightListLabel = "All regions",
+	showAllBlocked = false,
+	variable = registerVariable("violetBugsRegions"),
+	filters = {
+
+		{
+			label = "Regions",
+			callback = (
+				function()
+					local regionIDs = {}
+					for region in tes3.iterate(tes3.dataHandler.nonDynamicData.regions) do
+						table.insert(regionIDs, region.id)
+					end
+					return regionIDs
+				end
+			)
+		},
+
+	}
+}
+
 
 template:saveOnClose(configPath, config)
 mwse.mcm.register(template)

@@ -342,6 +342,10 @@ event.register("initialized", function()
             red = {
                 object = tes3.getObject("AB_r_GlowbugsLargeRed"),
                 regions = config.redBugsRegions
+            },
+            violet = {
+                object = tes3.getObject("AB_r_GlowbugsLargeViol"),
+                regions = config.violetBugsRegions
             }
         }
 
