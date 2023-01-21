@@ -20,6 +20,9 @@ local glowbugs, WtC
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Constants
 
+local DISTANCE_OFFSET = 2048
+local ZPOS_OFFSET = 50
+
 local ALLOWED_STRINGS = {
     "flora",
     "ab_f_"
@@ -76,7 +79,6 @@ end
 local function getCellZPos(cell)
     local average = 0
 	local denom = 0
-    local offset = 50
 
 	for stat in cell:iterateReferences() do
 		average = average + stat.position.z
@@ -84,9 +86,9 @@ local function getCellZPos(cell)
 	end
 
 	if average == 0 or denom == 0 then
-		return offset
+		return ZPOS_OFFSET
 	else
-		return (average / denom) + offset
+		return (average / denom) + ZPOS_OFFSET
 	end
 end
 
@@ -126,12 +128,13 @@ end
 ---@param t table
 ---@param objectType number
 ---@param cell tes3cell
+---@param playerPos tes3vector3
 ---@return nil
-local function iterObjects(t, objectType, cell)
+local function iterObjects(t, objectType, cell, playerPos)
     for ref in cell:iterateReferences(objectType) do
         local id = ref.object.id:lower()
         local pos = ref.position:copy()
-        if isIdAllowed(id) and not isIdDenied(id) and not table.find(t, pos) then
+        if isIdAllowed(id) and not isIdDenied(id) and not table.find(t, pos) and playerPos:distance(pos) > DISTANCE_OFFSET then
             table.insert(t, pos)
         end
 	end
@@ -143,8 +146,9 @@ end
 ---@return table
 local function getBugPositions(cell)
     local positions = {}
-    iterObjects(positions, tes3.objectType.static, cell)
-    iterObjects(positions, tes3.objectType.container, cell)
+    local playerPos = tes3.player.position:copy()
+    iterObjects(positions, tes3.objectType.static, cell, playerPos)
+    iterObjects(positions, tes3.objectType.container, cell, playerPos)
     return getTrimmedPositions(positions)
 end
 
@@ -160,7 +164,7 @@ local function spawnBugs(availableBugs, cell)
     math.randomseed(os.time())
     local getRandomPos = util.nonRepeatTableRNG(positions)
     local z = getCellZPos(cell)
-    local maxDensity = config.bugDensity / #availableBugs
+    local maxDensity = math.floor(config.bugDensity / #availableBugs)
 
     local density = 0
     local pos = getRandomPos()
@@ -231,15 +235,13 @@ local function conditionCheck()
         local day = wc.daysPassed.value
         local weather = wc.weatherController.currentWeather.index
         local regionID = tes3.getPlayerCell().region.id
+        if not regionID then return end
 
         -- percentage chance to spawn on any given day
-        -- is determined by the AB_GlowbugsChance global
         -- we only want to calculate this once per day!
         if bugsVisible[day] == nil then
             local roll = math.random(100)
-            local glob = tes3.getGlobal("AB_GlowbugsChance")
-            -- bugsVisible[day] = roll <= glob
-            bugsVisible[day] = true
+            bugsVisible[day] = roll <= config.spawnChance
         end
 
         local isActiveHours = (hour <= WtC.sunriseHour + 1) or (hour >= WtC.sunsetHour + 1)
@@ -319,7 +321,6 @@ local function startBugsTimer()
             timer.delayOneFrame(conditionCheck)
         end
     }
-    conditionCheck()
 end
 
 --- Register our events

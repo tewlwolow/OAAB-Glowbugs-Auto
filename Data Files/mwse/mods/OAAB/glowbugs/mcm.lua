@@ -30,6 +30,15 @@ mainPage:createSlider {
     variable = registerVariable("bugDensity")
 }
 
+mainPage:createSlider {
+    label = string.format("A chance that glowbugs will spawn if other conditions are met.\nDefault - %s%%.\nSpawn chance", defaults.spawnChance),
+    min = 0,
+    max = 100,
+    step = 1,
+    jump = 10,
+    variable = registerVariable("spawnChance")
+}
+
 ---
 template:createExclusionsPage{
 	label = "Green Glowbugs Regions",
