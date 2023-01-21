@@ -5,6 +5,7 @@
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Imports
 
+local re = require("re")
 local config = require("OAAB.glowbugs.config")
 local util = require("OAAB.glowbugs.util")
 
@@ -23,15 +24,8 @@ local glowbugs, WtC
 local DISTANCE_OFFSET = 2048
 local ZPOS_OFFSET = 50
 
-local ALLOWED_STRINGS = {
-    "flora",
-    "ab_f_"
-}
-
-local DENIED_STRINGS = {
-    "kelp",
-    "lilypad"
-}
+local ALLOWED_REGEX = re.compile[[ "flora" / "ab_f_" ]]
+local DENIED_REGEX = re.compile[[ "kelp" / "lilypad" ]]
 
 
 -->>>---------------------------------------------------------------------------------------------<<<--
@@ -97,29 +91,34 @@ end
 ---@param t table
 ---@return table
 local function getTrimmedPositions(t)
+    local bugDensity = config.bugDensity
     local trimmedPositions = {}
-    local getRandomPos = util.nonRepeatTableRNG(t)
-    for i = 1, math.min(config.bugDensity, #t) do
-        local val = getRandomPos()
-        table.insert(trimmedPositions, val)
+    local numItems = math.min(bugDensity, #table.keys(t))
+    for k, _ in pairs(t) do
+        if math.random() < (numItems / bugDensity) then
+            trimmedPositions[k] = true
+        end
+        if #table.keys(trimmedPositions) >= numItems then
+            break
+        end
     end
     return trimmedPositions
 end
 
 
---- Check if object id matches our whitelist.
+--- Check if object id matches our blacklist.
 ---@param id string
----@return boolean|nil
-local function isIdAllowed(id)
-    return string.multifind(id, ALLOWED_STRINGS)
+---@return boolean
+local function isIdDenied(id)
+    return re.find(id, DENIED_REGEX) ~= nil
 end
 
 
---- Check if object id matches our blacklist.
+--- Check if object id matches our whitelist.
 ---@param id string
----@return boolean|nil
-local function isIdDenied(id)
-    return string.multifind(id, DENIED_STRINGS)
+---@return boolean
+local function isIdAllowed(id)
+    return (re.find(id, ALLOWED_REGEX) ~= nil) and not (isIdDenied(id))
 end
 
 
@@ -133,8 +132,10 @@ local function iterObjects(t, objectType, cell, playerPos)
     for ref in cell:iterateReferences(objectType) do
         local id = ref.object.id:lower()
         local pos = ref.position:copy()
-        if isIdAllowed(id) and not isIdDenied(id) and not table.find(t, pos) and playerPos:distance(pos) > DISTANCE_OFFSET then
-            table.insert(t, pos)
+        if isIdAllowed(id) and playerPos:distance(pos) > DISTANCE_OFFSET then
+            if not t[pos] then
+                t[pos] = true
+            end
         end
 	end
 end
@@ -160,25 +161,19 @@ local function spawnBugs(availableBugs, cell)
     local positions = getBugPositions(cell)
     if table.empty(positions) then return end
 
-    local getRandomPos = util.nonRepeatTableRNG(positions)
     local z = getCellZPos(cell)
     local maxDensity = math.floor(config.bugDensity / #availableBugs)
 
-    local density = 0
-    local pos = getRandomPos()
-
     for _, bug in ipairs(availableBugs) do
-        while density < maxDensity do
+        for i = 1, maxDensity do
+            local pos = table.choice(table.keys(positions))
             tes3.createReference{
                 object = bug,
                 cell = cell,
                 orientation = tes3vector3.new(),
                 position = {pos.x, pos.y, z}
             }
-            pos = getRandomPos()
-            density = density + 1
         end
-        density = 0
     end
 
     toggleBugsVisibility(true)
@@ -203,10 +198,12 @@ end
 ---@param cell tes3cell
 ---@return nil
 local function cleanUpInactiveBugs(cell)
+    debug.log("Cleaning inactive glowbugs.")
     for ref in cell:iterateReferences(tes3.objectType.container) do
         if ref.sceneNode then
             local root = ref.sceneNode:getObjectByName("BugsRoot")
             if root and root.switchIndex == false then
+                debug.log("Found inactive glowbug. Deleting ref.")
                 ref:delete()
             end
         end
