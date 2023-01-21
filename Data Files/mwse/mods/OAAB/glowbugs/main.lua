@@ -148,7 +148,7 @@ local function cleanUpInactiveBugs(cell)
     for ref in cell:iterateReferences(tes3.objectType.container) do
         if ref.sceneNode then
             local root = ref.sceneNode:getObjectByName("BugsRoot")
-            if root.switchIndex == false then
+            if root and root.switchIndex == false then
                 ref:delete()
             end
         end
