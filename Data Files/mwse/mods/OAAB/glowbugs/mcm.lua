@@ -92,7 +92,7 @@ template:createExclusionsPage{
 	leftListLabel = "Enabled regions",
 	rightListLabel = "All regions",
 	showAllBlocked = false,
-	variable = registerVariable("redBugsRegion"),
+	variable = registerVariable("redBugsRegions"),
 	filters = {
 
 		{

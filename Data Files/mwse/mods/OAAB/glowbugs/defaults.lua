@@ -5,7 +5,7 @@ return {
 	blueBugsRegions = {
 		["Bitter Coast Region"] = true
 	},
-	redBugsRegion = {
+	redBugsRegions = {
 		["Ashlands Region"] = true
 	},
 	bugDensity = 10

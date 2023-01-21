@@ -288,7 +288,7 @@ event.register("initialized", function()
             },
             red = {
                 object = tes3.getObject("AB_r_GlowbugsLargeRed"),
-                regions = config.redBugsRegion
+                regions = config.redBugsRegions
             }
         }
 
