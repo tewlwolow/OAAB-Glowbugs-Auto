@@ -28,6 +28,7 @@ end
 ---
 local function refDeleted(e)
     activeBugs[e.object] = nil
+    e:delete()
 end
 
 
