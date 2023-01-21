@@ -13,7 +13,7 @@ local util = require("OAAB.glowbugs.util")
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Variables
 
-local activeBugs, bugCells, bugsVisible = {}, {}, {}
+local activeBugs, inActiveBugs, bugCells, bugsVisible = {}, {}, {}, {}
 
 local glowbugs, WtC
 
@@ -44,10 +44,14 @@ end
 
 
 --- Detect when bug references are deleted, and stop tracking them.
----@param e objectInvalidatedEventData
+---@param e referenceDeactivatedEventData
 ---@return nil
 local function refDeleted(e)
-    activeBugs[e.object] = nil
+    local ref = e.reference
+    if activeBugs[ref] then
+        activeBugs[ref] = nil
+        inActiveBugs[ref] = true
+    end
 end
 
 
@@ -59,7 +63,7 @@ local function toggleBugsVisibility(state)
     for ref in pairs(activeBugs) do
         if ref.sceneNode then
             local root = ref.sceneNode:getObjectByName("BugsRoot")
-            if root.switchIndex ~= index then
+            if root and root.switchIndex ~= index then
                 root.switchIndex = index
             end
         end
@@ -194,20 +198,13 @@ local function getAvailableBugs(regionID)
 end
 
 
---- Iterate over references in a cell and remove any glowbugs that have been switched off.
----@param cell tes3cell
+--- Iterate over inActiveBugs table and remove all glowbugs.
 ---@return nil
-local function cleanUpInactiveBugs(cell)
-    debug.log("Cleaning inactive glowbugs.")
-    for ref in cell:iterateReferences(tes3.objectType.container) do
-        if ref.sceneNode then
-            local root = ref.sceneNode:getObjectByName("BugsRoot")
-            if root and root.switchIndex == false then
-                debug.log("Found inactive glowbug. Deleting ref.")
-                ref:delete()
-            end
-        end
+local function cleanUpInactiveBugs()
+    for ref, _ in pairs(inActiveBugs) do
+        ref:delete()
     end
+    inActiveBugs = {}
 end
 
 
@@ -252,9 +249,9 @@ local function conditionCheck()
     end
 
     if not isBugsVisible then
-        bugCells[cell] = nil
         toggleBugsVisibility(isBugsVisible)
-        cleanUpInactiveBugs(cell)
+        cleanUpInactiveBugs()
+        bugCells[cell] = nil
     else
         if not (bugCells[cell]) then
             bugCells[cell] = true
@@ -325,7 +322,7 @@ end
 event.register("initialized", function()
     if tes3.isModActive("OAAB_Data.esm") then
         event.register("referenceSceneNodeCreated", refCreated)
-        event.register("objectInvalidated", refDeleted)
+        event.register("referenceDeactivated", refDeleted)
         event.register("cellChanged", conditionCheck)
         event.register("weatherTransitionFinished", conditionCheck)
         event.register("activate", harvestBugs, {priority = 600})
