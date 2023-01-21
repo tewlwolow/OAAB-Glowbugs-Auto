@@ -22,5 +22,5 @@ Please raise a pull request from your fork of the repo for me to review. Kindly 
 Refer to NexusMods page or source code comments for guidance. You can also write me a message.
 
 ## :heavy_check_mark: Feature Tracker
-> - [ ] Experiment with placement randomisation
-> - [ ] Code optimisations
+> - [X] Experiment with placement randomisation
+> - [X] Code optimisations
