@@ -98,7 +98,6 @@ end
 ---@return table
 local function getTrimmedPositions(t)
     local trimmedPositions = {}
-    math.randomseed(os.time())
     local getRandomPos = util.nonRepeatTableRNG(t)
     for i = 1, math.min(config.bugDensity, #t) do
         local val = getRandomPos()
@@ -161,7 +160,6 @@ local function spawnBugs(availableBugs, cell)
     local positions = getBugPositions(cell)
     if table.empty(positions) then return end
 
-    math.randomseed(os.time())
     local getRandomPos = util.nonRepeatTableRNG(positions)
     local z = getCellZPos(cell)
     local maxDensity = math.floor(config.bugDensity / #availableBugs)
