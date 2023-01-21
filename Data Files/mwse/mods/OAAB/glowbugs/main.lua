@@ -1,36 +1,62 @@
+-- OAAB Glowbugs MWSE spawn manager
+-->>>---------------------------------------------------------------------------------------------<<<--
+
+
+-->>>---------------------------------------------------------------------------------------------<<<--
+-- Imports
+
 local config = require("OAAB.glowbugs.config")
 local util = require("OAAB.glowbugs.util")
 
-local activeBugs, bugCells = {}, {}
 
-local bugs, WtC
+-->>>---------------------------------------------------------------------------------------------<<<--
+-- Variables
 
-local allowedStrings = {
+local activeBugs, bugCells, bugsVisible = {}, {}, {}
+
+local glowbugs, WtC
+
+
+-->>>---------------------------------------------------------------------------------------------<<<--
+-- Constants
+
+local ALLOWED_STRINGS = {
     "flora",
     "ab_f_"
 }
 
-local deniedStrings = {
+local DENIED_STRINGS = {
     "kelp",
     "lilypad"
 }
 
+
+-->>>---------------------------------------------------------------------------------------------<<<--
+-- Functions
+
+
 --- Detect when bug references are created, and start tracking them.
----
+---@param e referenceSceneNodeCreatedEventData
+---@return nil
 local function refCreated(e)
-    if e.reference.sceneNode:hasStringDataWith("HasBugsRoot") then
-        activeBugs[e.reference] = true
+    local ref = e.reference
+    if ref.sceneNode:hasStringDataWith("HasBugsRoot") then
+        activeBugs[ref] = true
     end
 end
 
+
 --- Detect when bug references are deleted, and stop tracking them.
----
+---@param e objectInvalidatedEventData
+---@return nil
 local function refDeleted(e)
     activeBugs[e.object] = nil
 end
 
+
 --- Toggle visibility for all currently active bugs references.
----
+---@param state boolean|number
+---@return nil
 local function toggleBugsVisibility(state)
     local index = state and 1 or 0
     for ref in pairs(activeBugs) do
@@ -43,8 +69,10 @@ local function toggleBugsVisibility(state)
     end
 end
 
---- Get the average Z pos in cell and offset it slightly up
----
+
+--- Get the average Z pos in a cell and offset it slightly up.
+---@param cell tes3cell
+---@return number
 local function getCellZPos(cell)
     local average = 0
 	local denom = 0
@@ -62,39 +90,57 @@ local function getCellZPos(cell)
 	end
 end
 
---- Decimate the table to hold random items clamped by max density
----
-local function getTrimmedPositions(positions)
+
+--- Decimate the table to hold random items clamped by max density.
+---@param t table
+---@return table
+local function getTrimmedPositions(t)
     local trimmedPositions = {}
     math.randomseed(os.time())
-    local getRandomPos = util.nonRepeatTableRNG(positions)
-    for i = 1, math.min(config.bugDensity, #positions) do
+    local getRandomPos = util.nonRepeatTableRNG(t)
+    for i = 1, math.min(config.bugDensity, #t) do
         local val = getRandomPos()
         table.insert(trimmedPositions, val)
     end
     return trimmedPositions
 end
 
+
+--- Check if object id matches our whitelist.
+---@param id string
+---@return boolean|nil
 local function isIdAllowed(id)
-    return string.multifind(id, allowedStrings)
+    return string.multifind(id, ALLOWED_STRINGS)
 end
 
+
+--- Check if object id matches our blacklist.
+---@param id string
+---@return boolean|nil
 local function isIdDenied(id)
-    return string.multifind(id, deniedStrings)
+    return string.multifind(id, DENIED_STRINGS)
 end
 
-local function iterObjects(positions, objectType, cell)
+
+--- Iterate over objects of specific type in a cell and insert them into the table.
+---@param t table
+---@param objectType number
+---@param cell tes3cell
+---@return nil
+local function iterObjects(t, objectType, cell)
     for ref in cell:iterateReferences(objectType) do
         local id = ref.object.id:lower()
         local pos = ref.position:copy()
-        if isIdAllowed(id) and not isIdDenied(id) and not table.find(positions, pos) then
-            table.insert(positions, pos)
+        if isIdAllowed(id) and not isIdDenied(id) and not table.find(t, pos) then
+            table.insert(t, pos)
         end
 	end
 end
 
---- Scan cells for flora statics and containers and get a list of positions
----
+
+--- Scan cells for flora statics and containers and get a list of their positions.
+---@param cell tes3cell
+---@return table
 local function getBugPositions(cell)
     local positions = {}
     iterObjects(positions, tes3.objectType.static, cell)
@@ -102,8 +148,11 @@ local function getBugPositions(cell)
     return getTrimmedPositions(positions)
 end
 
---- Create glowbugs refs
----
+
+--- Create references for available glowbugs per cell.
+---@param availableBugs table
+---@param cell tes3cell
+---@return nil
 local function spawnBugs(availableBugs, cell)
     local positions = getBugPositions(cell)
     if table.empty(positions) then return end
@@ -115,6 +164,7 @@ local function spawnBugs(availableBugs, cell)
 
     local density = 0
     local pos = getRandomPos()
+
     for _, bug in ipairs(availableBugs) do
         while density < maxDensity do
             tes3.createReference{
@@ -132,11 +182,13 @@ local function spawnBugs(availableBugs, cell)
     toggleBugsVisibility(true)
 end
 
---- See if we are in a valid region
----
+
+--- Return a table with available glowbug types given the region id.
+---@param regionID string
+---@return table
 local function getAvailableBugs(regionID)
     local availableBugs = {}
-    for _, glowbugType in pairs(bugs) do
+    for _, glowbugType in pairs(glowbugs) do
         if glowbugType.regions[regionID] then
             table.insert(availableBugs, glowbugType.object)
         end
@@ -144,6 +196,10 @@ local function getAvailableBugs(regionID)
     return availableBugs
 end
 
+
+--- Iterate over references in a cell and remove any glowbugs that have been switched off.
+---@param cell tes3cell
+---@return nil
 local function cleanUpInactiveBugs(cell)
     for ref in cell:iterateReferences(tes3.objectType.container) do
         if ref.sceneNode then
@@ -155,9 +211,9 @@ local function cleanUpInactiveBugs(cell)
     end
 end
 
---- Global manager for active bugs. Runs once per hour.
----
-local bugsVisible = {}
+
+--- Condition check for active bugs. Runs once per hour.
+---@return nil
 local function conditionCheck()
     local cell = tes3.player.cell
 
@@ -212,7 +268,8 @@ end
 
 
 --- Harvest a single bug. Called on "activate" event.
----
+---@param e activateEventData
+---@return boolean|nil
 local function harvestBugs(e)
     if not activeBugs[e.target] then
         return
@@ -251,9 +308,9 @@ local function harvestBugs(e)
 end
 
 
---- Update bugs once per hour.
----
-local function bugsTimer()
+--- Start a time to update bugs once per hour.
+---@return nil
+local function startBugsTimer()
     timer.start{
         type = timer.game,
         iterations = -1,
@@ -265,7 +322,7 @@ local function bugsTimer()
     conditionCheck()
 end
 
-
+--- Register our events
 event.register("initialized", function()
     if tes3.isModActive("OAAB_Data.esm") then
         event.register("referenceSceneNodeCreated", refCreated)
@@ -273,11 +330,11 @@ event.register("initialized", function()
         event.register("cellChanged", conditionCheck)
         event.register("weatherTransitionFinished", conditionCheck)
         event.register("activate", harvestBugs, {priority = 600})
-        event.register("loaded", bugsTimer)
+        event.register("loaded", startBugsTimer)
 
         WtC = tes3.worldController.weatherController
 
-        bugs = {
+        glowbugs = {
             green = {
                 object = tes3.getObject("AB_r_GlowbugsLargeGreen"),
                 regions = config.greenBugsRegions
@@ -295,7 +352,7 @@ event.register("initialized", function()
     end
 end)
 
--- Registers MCM menu --
+--- Register MCM menu
 event.register("modConfigReady", function()
     dofile("Data Files\\MWSE\\mods\\OAAB\\glowbugs\\mcm.lua")
 end)
