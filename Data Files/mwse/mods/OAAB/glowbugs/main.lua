@@ -7,7 +7,6 @@
 
 local re = require("re")
 local config = require("OAAB.glowbugs.config")
-local util = require("OAAB.glowbugs.util")
 
 
 -->>>---------------------------------------------------------------------------------------------<<<--

@@ -41,7 +41,7 @@ mainPage:createSlider {
 
 ---
 template:createExclusionsPage{
-	label = "Green Glowbugs Regions",
+	label = "Green",
 	description = "Select which regions the green glowbugs will spawn in. Move regions to the left table to enable.",
 	toggleText = "Toggle",
 	leftListLabel = "Enabled regions",
@@ -68,7 +68,7 @@ template:createExclusionsPage{
 
 ---
 template:createExclusionsPage{
-	label = "Blue Glowbugs Regions",
+	label = "Blue",
 	description = "Select which regions the blue glowbugs will spawn in. Move regions to the left table to enable.",
 	toggleText = "Toggle",
 	leftListLabel = "Enabled regions",
@@ -95,7 +95,7 @@ template:createExclusionsPage{
 
 ---
 template:createExclusionsPage{
-	label = "Red Glowbugs Regions",
+	label = "Red",
 	description = "Select which regions the red glowbugs will spawn in. Move regions to the left table to enable.",
 	toggleText = "Toggle",
 	leftListLabel = "Enabled regions",
@@ -122,7 +122,7 @@ template:createExclusionsPage{
 
 ---
 template:createExclusionsPage{
-	label = "Violet Glowbugs Regions",
+	label = "Violet",
 	description = "Select which regions the violet glowbugs will spawn in. Move regions to the left table to enable.",
 	toggleText = "Toggle",
 	leftListLabel = "Enabled regions",
