@@ -323,6 +323,9 @@ local function startBugsTimer()
     }
 end
 
+-->>>---------------------------------------------------------------------------------------------<<<--
+-- Events
+
 --- Register our events
 event.register("initialized", function()
     if tes3.isModActive("OAAB_Data.esm") then
@@ -352,6 +355,7 @@ event.register("initialized", function()
 
     end
 end)
+
 
 --- Register MCM menu
 event.register("modConfigReady", function()
