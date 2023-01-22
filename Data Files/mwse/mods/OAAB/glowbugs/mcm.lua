@@ -147,6 +147,5 @@ template:createExclusionsPage{
 	}
 }
 
-
 template:saveOnClose(configPath, config)
 mwse.mcm.register(template)
