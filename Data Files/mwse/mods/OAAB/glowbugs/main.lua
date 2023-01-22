@@ -14,7 +14,7 @@ local config = require("OAAB.glowbugs.config")
 
 local activeBugs, bugCells, bugsVisible = {}, {}, {}
 
-local glowbugs, WtC
+local glowbugs, WtC, wc
 
 
 -->>>---------------------------------------------------------------------------------------------<<<--
@@ -57,6 +57,9 @@ local function refDeleted(e)
 end
 
 
+--- Wait for one frame and then remove ref from activeBugs table and set it to delete.
+---@param ref tes3reference
+---@return nil
 local function safeDelete(ref)
     timer.delayOneFrame(
         function()
@@ -67,6 +70,15 @@ local function safeDelete(ref)
 end
 
 
+--- Check if the ref comes from outside of an .esp file.
+---@param ref tes3reference
+---@return boolean
+local function isSourcelessRef(ref)
+    local sourceMod = ref.sourceMod
+    return (not sourceMod or string.endswith(sourceMod, ".ess"))
+end
+
+
 --- Toggle visibility for all currently active bugs references.
 ---@param state boolean|number
 ---@return nil
@@ -74,7 +86,7 @@ local function toggleBugsVisibility(state)
     local index = state and 1 or 0
     local toRemove = {}
     for ref in pairs(activeBugs) do
-        if not ref.sourceMod and not state then
+        if isSourcelessRef(ref) and not state then
             toRemove[ref] = true
         end
         if ref and ref.sceneNode then
@@ -90,15 +102,15 @@ local function toggleBugsVisibility(state)
 end
 
 
---- Get the average Z pos in a cell and offset it slightly up.
----@param cell tes3cell
+--- Get the average Z pos of a table of tes3vector3 types and offset it slightly up.
+---@param positions table
 ---@return number
-local function getCellZPos(cell)
+local function getCellZPos(positions)
     local average = 0
 	local denom = 0
 
-	for stat in cell:iterateReferences() do
-		average = average + stat.position.z
+	for stat in pairs(positions) do
+		average = average + stat.z
 		denom = denom + 1
 	end
 
@@ -145,6 +157,15 @@ local function isIdAllowed(id)
 end
 
 
+--- Check if the position of the object is not too close to the player.
+---@param playerPos tes3vector3
+---@param pos tes3vector3
+---@return boolean
+local function isDistantObject(playerPos, pos)
+    return playerPos:distance(pos) > DISTANCE_OFFSET
+end
+
+
 --- Iterate over objects of specific type in a cell and insert them into the table.
 ---@param t table
 ---@param objectType number
@@ -155,7 +176,7 @@ local function iterObjects(t, objectType, cell, playerPos)
     for ref in cell:iterateReferences(objectType) do
         local id = ref.object.id:lower()
         local pos = ref.position:copy()
-        if isIdAllowed(id) and playerPos:distance(pos) > DISTANCE_OFFSET then
+        if isIdAllowed(id) and isDistantObject(playerPos, pos) then
             if not t[pos] then
                 t[pos] = true
             end
@@ -184,7 +205,7 @@ local function spawnBugs(availableBugs, cell)
     local positions = getBugPositions(cell)
     if table.empty(positions) then return end
 
-    local z = getCellZPos(cell)
+    -- local z = getCellZPos(positions)
     local maxDensity = math.floor(config.bugDensity / #availableBugs)
     local orient = tes3vector3.new()
 
@@ -195,7 +216,7 @@ local function spawnBugs(availableBugs, cell)
                 object = bug,
                 cell = cell,
                 orientation = orient,
-                position = {pos.x, pos.y, z}
+                position = {pos.x, pos.y, pos.z + ZPOS_OFFSET}
             }
         end
     end
@@ -217,6 +238,39 @@ local function getAvailableBugs(regionID)
     return availableBugs
 end
 
+
+--- Check if it's dark.
+---@param hour number
+---@return boolean
+local function isActiveHours(hour)
+    return (hour <= WtC.sunriseHour + 1) or (hour >= WtC.sunsetHour + 1)
+end
+
+
+--- Check if the weather index matches clear weather types.
+---@param weather number
+---@return boolean
+local function isValidWeather(weather)
+    return weather < tes3.weather.rain
+end
+
+
+--- Check the roll chance for day chance.
+---@param day number
+---@return boolean
+local function isValidDay(day)
+    return bugsVisible[day]
+end
+
+
+--- Check if the cell is in the wilderness.
+---@param cell tes3cell
+---@return boolean
+local function isWilderness(cell)
+    return (not cell.name)
+end
+
+
 --- Condition check for active bugs. Runs once per hour.
 ---@return nil
 local function conditionCheck()
@@ -227,12 +281,12 @@ local function conditionCheck()
 
     if (cell.isOrBehavesAsExterior) then
         -- exterior cells require valid hours/weathers
-        local wc = tes3.worldController
-
         local hour = wc.hour.value
         local day = wc.daysPassed.value
         local weather = wc.weatherController.currentWeather.index
         local regionID = tes3.getPlayerCell().region.id
+
+        -- we don't want log spam if someone yeets our of worldspace
         if not regionID then return end
 
         -- percentage chance to spawn on any given day
@@ -242,13 +296,9 @@ local function conditionCheck()
             bugsVisible[day] = roll <= config.spawnChance
         end
 
-        local isActiveHours = (hour <= WtC.sunriseHour + 1) or (hour >= WtC.sunsetHour + 1)
-        local isValidWeather = weather < tes3.weather.rain
-        local isValidDay = bugsVisible[day]
-        local isWilderness = not cell.name
         availableBugs = getAvailableBugs(regionID)
 
-        isBugsVisible = isActiveHours and isValidWeather and isValidDay and isWilderness and not (table.empty(availableBugs))
+        isBugsVisible = isActiveHours(hour) and isValidWeather(weather) and isValidDay(day) and isWilderness(cell) and not (table.empty(availableBugs))
     end
 
     toggleBugsVisibility(isBugsVisible)
@@ -264,7 +314,7 @@ end
 ---@return nil
 local function refDeactivated(e)
     local ref = e.reference
-    if (activeBugs[ref]) and not (ref.sourceMod) then
+    if (activeBugs[ref]) and isSourcelessRef(ref) then
         safeDelete(ref)
     end
 end
@@ -340,6 +390,7 @@ event.register("initialized", function()
         event.register("loaded", startBugsTimer)
 
         WtC = tes3.worldController.weatherController
+        wc = tes3.worldController
 
         glowbugs = {
             green = {
