@@ -77,9 +77,6 @@ local function toggleBugsVisibility(state)
         if not ref.sourceMod and not state then
             toRemove[ref] = true
         end
-        local sourceMod = ref.sourceMod or "nil"
-        local refID = ref.id or "nil"
-        debug.log(refID .. " | " .. sourceMod)
         if ref and ref.sceneNode then
             local root = ref.sceneNode:getObjectByName("BugsRoot")
             if root and root.switchIndex ~= index then
