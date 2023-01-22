@@ -186,6 +186,7 @@ local function spawnBugs(availableBugs, cell)
 
     local z = getCellZPos(cell)
     local maxDensity = math.floor(config.bugDensity / #availableBugs)
+    local orient = tes3vector3.new()
 
     for _, bug in ipairs(availableBugs) do
         for i = 1, maxDensity do
@@ -193,7 +194,7 @@ local function spawnBugs(availableBugs, cell)
             tes3.createReference{
                 object = bug,
                 cell = cell,
-                orientation = tes3vector3.new(),
+                orientation = orient,
                 position = {pos.x, pos.y, z}
             }
         end
