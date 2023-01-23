@@ -236,8 +236,16 @@ local function isWilderness(cell)
 end
 
 
+--- Check if the player's mobile is waiting or travelling.
+---@return boolean
+local function isPlayerAvailable()
+    local mop = tes3.mobilePlayer
+    return not (mop.waiting) and not (mop.traveling)
+end
+
 --- Condition check for active bugs. Runs once per hour.
 local function conditionCheck()
+    if not isPlayerAvailable() then return end
     local cell = tes3.player.cell
     if not cell then return end
 
@@ -271,6 +279,13 @@ local function conditionCheck()
     if isBugsVisible and not (bugCells[cell]) then
         spawnBugs(availableBugs, cell)
     end
+end
+
+local function onWaitMenu(e)
+	local element = e.element
+	element:registerAfter(tes3.uiEvent.destroy, function()
+		timer.delayOneFrame(conditionCheck)
+	end)
 end
 
 
@@ -332,9 +347,7 @@ local function startBugsTimer()
         type = timer.game,
         iterations = -1,
         duration = 1,
-        callback = function()
-            timer.delayOneFrame(conditionCheck)
-        end
+        callback = conditionCheck
     }
 end
 
@@ -352,6 +365,7 @@ event.register("initialized", function()
         event.register("weatherTransitionFinished", conditionCheck)
         event.register("activate", harvestBugs, {priority = 600})
         event.register("loaded", startBugsTimer)
+        event.register(tes3.event.uiActivated, onWaitMenu, { filter = "MenuTimePass"})
 
         WtC = tes3.worldController.weatherController
         wc = tes3.worldController
