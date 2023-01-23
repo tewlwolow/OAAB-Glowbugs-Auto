@@ -341,7 +341,6 @@ end
 
 
 --- Start a time to update bugs once per hour.
-
 local function startBugsTimer()
     timer.start{
         type = timer.game,
