@@ -33,37 +33,31 @@ local DENIED_REGEX = re.compile[[ "kelp" / "lilypad" ]]
 
 --- Detect when bug references are created, and start tracking them.
 ---@param e referenceSceneNodeCreatedEventData
----@return nil
 local function refCreated(e)
     local ref = e.reference
-    local refCell = ref.cell
     if ref.sceneNode:hasStringDataWith("HasBugsRoot") then
         activeBugs[ref] = true
-        if refCell then
-            bugCells[refCell] = true
-        end
+        bugCells[ref.cell] = true
     end
 end
 
 
 --- Detect when bug references are deleted, and stop tracking them.
 ---@param e objectInvalidatedEventData
----@return nil
 local function refDeleted(e)
     local ref = e.object
-    if activeBugs[ref] then
-        activeBugs[ref] = nil
-    end
+    activeBugs[ref] = nil
+    bugCells[ref.cell] = nil
 end
 
 
 --- Wait for one frame and then remove ref from activeBugs table and set it to delete.
 ---@param ref tes3reference
----@return nil
 local function safeDelete(ref)
     timer.delayOneFrame(
         function()
             activeBugs[ref] = nil
+            bugCells[ref.cell] = nil
             ref:delete()
         end
     )
@@ -74,51 +68,25 @@ end
 ---@param ref tes3reference
 ---@return boolean
 local function isSourcelessRef(ref)
-    local sourceMod = ref.sourceMod
-    return (not sourceMod or string.endswith(sourceMod, ".ess"))
+    return not ref.sourceMod or string.endswith(ref.sourceMod, ".ess")
 end
 
 
---- Toggle visibility for all currently active bugs references.
----@param state boolean|number
----@return nil
+--- Toggle visibility for all currently active bugs references and update tracked cell table.
+---@param state boolean
 local function toggleBugsVisibility(state)
     local index = state and 1 or 0
-    local toRemove = {}
-    for ref in pairs(activeBugs) do
+    debug.log(tostring(state))
+    for ref, _ in pairs(activeBugs) do
         if isSourcelessRef(ref) and not state then
-            toRemove[ref] = true
-        end
-        if ref and ref.sceneNode then
+            safeDelete(ref)
+        elseif ref and ref.sceneNode then
             local root = ref.sceneNode:getObjectByName("BugsRoot")
             if root and root.switchIndex ~= index then
                 root.switchIndex = index
             end
         end
     end
-    for ref in pairs(toRemove) do
-        safeDelete(ref)
-    end
-end
-
-
---- Get the average Z pos of a table of tes3vector3 types and offset it slightly up.
----@param positions table
----@return number
-local function getCellZPos(positions)
-    local average = 0
-	local denom = 0
-
-	for stat in pairs(positions) do
-		average = average + stat.z
-		denom = denom + 1
-	end
-
-	if average == 0 or denom == 0 then
-		return ZPOS_OFFSET
-	else
-		return (average / denom) + ZPOS_OFFSET
-	end
 end
 
 
@@ -171,7 +139,6 @@ end
 ---@param objectType number
 ---@param cell tes3cell
 ---@param playerPos tes3vector3
----@return nil
 local function iterObjects(t, objectType, cell, playerPos)
     for ref in cell:iterateReferences(objectType) do
         local id = ref.object.id:lower()
@@ -193,29 +160,27 @@ local function getBugPositions(cell)
     local playerPos = tes3.player.position:copy()
     iterObjects(positions, tes3.objectType.static, cell, playerPos)
     iterObjects(positions, tes3.objectType.container, cell, playerPos)
-    return getTrimmedPositions(positions)
+    return table.keys(getTrimmedPositions(positions))
 end
 
 
 --- Create references for available glowbugs per cell.
 ---@param availableBugs table
 ---@param cell tes3cell
----@return nil
 local function spawnBugs(availableBugs, cell)
     local positions = getBugPositions(cell)
     if table.empty(positions) then return end
 
-    -- local z = getCellZPos(positions)
     local maxDensity = math.floor(config.bugDensity / #availableBugs)
-    local orient = tes3vector3.new()
 
     for _, bug in ipairs(availableBugs) do
         for i = 1, maxDensity do
-            local pos = table.choice(table.keys(positions))
+            local index = math.random(1, #positions)
+            local pos = positions[index]
             tes3.createReference{
                 object = bug,
                 cell = cell,
-                orientation = orient,
+                orientation = tes3vector3.new(),
                 position = {pos.x, pos.y, pos.z + ZPOS_OFFSET}
             }
         end
@@ -272,9 +237,9 @@ end
 
 
 --- Condition check for active bugs. Runs once per hour.
----@return nil
 local function conditionCheck()
     local cell = tes3.player.cell
+    if not cell then return end
 
     local isBugsVisible = true
     local availableBugs = {}
@@ -283,8 +248,8 @@ local function conditionCheck()
         -- exterior cells require valid hours/weathers
         local hour = wc.hour.value
         local day = wc.daysPassed.value
-        local weather = wc.weatherController.currentWeather.index
-        local regionID = tes3.getPlayerCell().region.id
+        local weather = WtC.currentWeather.index
+        local regionID = tes3.player.cell.region.id
 
         -- we don't want log spam if someone yeets our of worldspace
         if not regionID then return end
@@ -311,7 +276,6 @@ end
 
 --- Detect when custom bug references are decativated, set them to delete stop tracking them.
 ---@param e referenceDeactivatedEventData
----@return nil
 local function refDeactivated(e)
     local ref = e.reference
     if (activeBugs[ref]) and isSourcelessRef(ref) then
@@ -362,7 +326,7 @@ end
 
 
 --- Start a time to update bugs once per hour.
----@return nil
+
 local function startBugsTimer()
     timer.start{
         type = timer.game,
@@ -384,7 +348,7 @@ event.register("initialized", function()
         event.register("referenceSceneNodeCreated", refCreated)
         event.register("objectInvalidated", refDeleted)
         event.register("referenceDeactivated", refDeactivated)
-        event.register("cellChanged", function() timer.delayOneFrame(conditionCheck) end)
+        event.register("cellChanged", conditionCheck)
         event.register("weatherTransitionFinished", conditionCheck)
         event.register("activate", harvestBugs, {priority = 600})
         event.register("loaded", startBugsTimer)
