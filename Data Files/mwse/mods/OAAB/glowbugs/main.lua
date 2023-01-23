@@ -76,7 +76,6 @@ end
 ---@param state boolean
 local function toggleBugsVisibility(state)
     local index = state and 1 or 0
-    debug.log(tostring(state))
     for ref, _ in pairs(activeBugs) do
         if isSourcelessRef(ref) and not state then
             safeDelete(ref)
@@ -172,6 +171,7 @@ local function spawnBugs(availableBugs, cell)
     if table.empty(positions) then return end
 
     local maxDensity = math.floor(config.bugDensity / #availableBugs)
+    local orient = tes3vector3.new()
 
     for _, bug in ipairs(availableBugs) do
         for i = 1, maxDensity do
@@ -180,7 +180,7 @@ local function spawnBugs(availableBugs, cell)
             tes3.createReference{
                 object = bug,
                 cell = cell,
-                orientation = tes3vector3.new(),
+                orientation = orient,
                 position = {pos.x, pos.y, pos.z + ZPOS_OFFSET}
             }
         end
