@@ -30,7 +30,6 @@ local DENIED_REGEX = re.compile[[ "kelp" / "lilypad" ]]
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Functions
 
-
 --- Detect when bug references are created, and start tracking them.
 ---@param e referenceSceneNodeCreatedEventData
 local function refCreated(e)
@@ -281,6 +280,9 @@ local function conditionCheck()
     end
 end
 
+
+--- Register our condition check one frame after wait menu is destroyed.
+---@param e uiActivatedEventData
 local function onWaitMenu(e)
 	local element = e.element
 	element:registerAfter(tes3.uiEvent.destroy, function()
@@ -364,7 +366,7 @@ event.register("initialized", function()
         event.register("weatherTransitionFinished", conditionCheck)
         event.register("activate", harvestBugs, {priority = 600})
         event.register("loaded", startBugsTimer)
-        event.register(tes3.event.uiActivated, onWaitMenu, { filter = "MenuTimePass"})
+        event.register("uiActivated", onWaitMenu, { filter = "MenuTimePass"})
 
         WtC = tes3.worldController.weatherController
         wc = tes3.worldController
