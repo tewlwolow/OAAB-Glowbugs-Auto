@@ -168,7 +168,7 @@ local function getBugPositions(cell)
     return table.keys(getTrimmedPositions(positions))
 end
 
---- Return a random zpos for a glowbug to spawn at.
+--- Get a random zpos from preset height data for a glowbug to spawn at.
 ---@return integer
 local function getRandomZPos()
     local index = math.random(1, #HEIGHTS)
