@@ -21,7 +21,8 @@ local glowbugs, WtC, wc
 -- Constants
 
 local DISTANCE_OFFSET = 2048
-local ZPOS_OFFSET = 50
+
+local HEIGHTS = {20, 50, 85, 120, 250, 420, 630, 820, 950}
 
 local ALLOWED_REGEX = re.compile[[ "flora" / "ab_f_" ]]
 local DENIED_REGEX = re.compile[[ "kelp" / "lilypad" ]]
@@ -36,7 +37,10 @@ local function refCreated(e)
     local ref = e.reference
     if ref.sceneNode:hasStringDataWith("HasBugsRoot") then
         activeBugs[ref] = true
-        bugCells[ref.cell] = true
+        local refCell = ref.cell
+        if refCell then
+            bugCells[refCell] = true
+        end
     end
 end
 
@@ -46,7 +50,10 @@ end
 local function refDeleted(e)
     local ref = e.object
     activeBugs[ref] = nil
-    bugCells[ref.cell] = nil
+    local refCell = ref.cell
+    if refCell then
+        bugCells[refCell] = nil
+    end
 end
 
 
@@ -161,6 +168,12 @@ local function getBugPositions(cell)
     return table.keys(getTrimmedPositions(positions))
 end
 
+--- Return a random zpos for a glowbug to spawn at.
+---@return integer
+local function getRandomZPos()
+    local index = math.random(1, #HEIGHTS)
+    return HEIGHTS[index]
+end
 
 --- Create references for available glowbugs per cell.
 ---@param availableBugs table
@@ -180,7 +193,7 @@ local function spawnBugs(availableBugs, cell)
                 object = bug,
                 cell = cell,
                 orientation = orient,
-                position = {pos.x, pos.y, pos.z + ZPOS_OFFSET}
+                position = {pos.x, pos.y, pos.z + getRandomZPos()}
             }
         end
     end
