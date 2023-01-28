@@ -93,59 +93,62 @@ template:createExclusionsPage{
 	}
 }
 
----
-template:createExclusionsPage{
-	label = "Red",
-	description = "Select which regions the red glowbugs will spawn in. Move regions to the left table to enable.",
-	toggleText = "Toggle",
-	leftListLabel = "Enabled regions",
-	rightListLabel = "All regions",
-	showAllBlocked = false,
-	variable = registerVariable("redBugsRegions"),
-	filters = {
+--- Only show additional options is our esp is active
+if tes3.isModActive("OAAB_Red&Violet_Glowbugs.esp") then
+	---
+	template:createExclusionsPage{
+		label = "Red",
+		description = "Select which regions the red glowbugs will spawn in. Move regions to the left table to enable.",
+		toggleText = "Toggle",
+		leftListLabel = "Enabled regions",
+		rightListLabel = "All regions",
+		showAllBlocked = false,
+		variable = registerVariable("redBugsRegions"),
+		filters = {
 
-		{
-			label = "Regions",
-			callback = (
-				function()
-					local regionIDs = {}
-					for region in tes3.iterate(tes3.dataHandler.nonDynamicData.regions) do
-						table.insert(regionIDs, region.id)
+			{
+				label = "Regions",
+				callback = (
+					function()
+						local regionIDs = {}
+						for region in tes3.iterate(tes3.dataHandler.nonDynamicData.regions) do
+							table.insert(regionIDs, region.id)
+						end
+						return regionIDs
 					end
-					return regionIDs
-				end
-			)
-		},
+				)
+			},
 
+		}
 	}
-}
 
----
-template:createExclusionsPage{
-	label = "Violet",
-	description = "Select which regions the violet glowbugs will spawn in. Move regions to the left table to enable.",
-	toggleText = "Toggle",
-	leftListLabel = "Enabled regions",
-	rightListLabel = "All regions",
-	showAllBlocked = false,
-	variable = registerVariable("violetBugsRegions"),
-	filters = {
+	---
+	template:createExclusionsPage{
+		label = "Violet",
+		description = "Select which regions the violet glowbugs will spawn in. Move regions to the left table to enable.",
+		toggleText = "Toggle",
+		leftListLabel = "Enabled regions",
+		rightListLabel = "All regions",
+		showAllBlocked = false,
+		variable = registerVariable("violetBugsRegions"),
+		filters = {
 
-		{
-			label = "Regions",
-			callback = (
-				function()
-					local regionIDs = {}
-					for region in tes3.iterate(tes3.dataHandler.nonDynamicData.regions) do
-						table.insert(regionIDs, region.id)
+			{
+				label = "Regions",
+				callback = (
+					function()
+						local regionIDs = {}
+						for region in tes3.iterate(tes3.dataHandler.nonDynamicData.regions) do
+							table.insert(regionIDs, region.id)
+						end
+						return regionIDs
 					end
-					return regionIDs
-				end
-			)
-		},
+				)
+			},
 
+		}
 	}
-}
+end
 
 template:saveOnClose(configPath, config)
 mwse.mcm.register(template)
