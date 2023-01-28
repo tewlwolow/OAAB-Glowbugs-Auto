@@ -208,7 +208,7 @@ end
 local function getAvailableBugs(regionID)
     local availableBugs = {}
     for _, glowbugType in pairs(glowbugs) do
-        if glowbugType.regions[regionID] then
+        if glowbugType.regions[regionID] and glowbugType.object then
             table.insert(availableBugs, glowbugType.object)
         end
     end
